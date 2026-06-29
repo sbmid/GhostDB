@@ -60,6 +60,19 @@ const DOM = {
     themeIcon: document.getElementById('theme-icon'),
     toastContainer: document.getElementById('toast-container'),
 
+    // Custom Dialogs
+    dialogConfirm: document.getElementById('dialog-confirm'),
+    dialogConfirmTitle: document.getElementById('dialog-confirm-title'),
+    dialogConfirmCaption: document.getElementById('dialog-confirm-caption'),
+    btnDialogConfirmCancel: document.getElementById('btn-dialog-confirm-cancel'),
+    btnDialogConfirmAction: document.getElementById('btn-dialog-confirm-action'),
+    
+    dialogPrompt: document.getElementById('dialog-prompt'),
+    dialogPromptTitle: document.getElementById('dialog-prompt-title'),
+    dialogPromptInput: document.getElementById('dialog-prompt-input'),
+    btnDialogPromptCancel: document.getElementById('btn-dialog-prompt-cancel'),
+    btnDialogPromptSubmit: document.getElementById('btn-dialog-prompt-submit'),
+
     // Pagination
     paginationControls: document.getElementById('pagination-controls'),
     pageInfo: document.getElementById('page-info'),
@@ -89,6 +102,73 @@ function showToast(message, type = 'success') {
         toast.classList.replace('toast-enter', 'toast-exit');
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+// --- CUSTOM DIALOGS (PROMISE BASED) ---
+function showConfirmDialog(title, caption, actionText = 'Confirm', isDanger = false) {
+    return new Promise((resolve) => {
+        DOM.dialogConfirmTitle.textContent = title;
+        DOM.dialogConfirmCaption.textContent = caption;
+        DOM.btnDialogConfirmAction.textContent = actionText;
+        
+        if (isDanger) {
+            DOM.btnDialogConfirmAction.className = 'px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-all shadow-sm';
+        } else {
+            DOM.btnDialogConfirmAction.className = 'px-4 py-2 text-sm font-medium text-white bg-[var(--accent)] hover:brightness-110 rounded-md transition-all shadow-sm';
+        }
+
+        DOM.dialogConfirm.classList.remove('hidden');
+        setTimeout(() => {
+            DOM.dialogConfirm.classList.remove('opacity-0');
+            DOM.dialogConfirm.querySelector('div').classList.remove('scale-95');
+        }, 10);
+
+        const cleanup = () => {
+            DOM.dialogConfirm.classList.add('opacity-0');
+            DOM.dialogConfirm.querySelector('div').classList.add('scale-95');
+            setTimeout(() => DOM.dialogConfirm.classList.add('hidden'), 200);
+            DOM.btnDialogConfirmCancel.removeEventListener('click', onCancel);
+            DOM.btnDialogConfirmAction.removeEventListener('click', onConfirm);
+        };
+
+        const onCancel = () => { cleanup(); resolve(false); };
+        const onConfirm = () => { cleanup(); resolve(true); };
+
+        DOM.btnDialogConfirmCancel.addEventListener('click', onCancel);
+        DOM.btnDialogConfirmAction.addEventListener('click', onConfirm);
+    });
+}
+
+function showPromptDialog(title, placeholder) {
+    return new Promise((resolve) => {
+        DOM.dialogPromptTitle.textContent = title;
+        DOM.dialogPromptInput.placeholder = placeholder;
+        DOM.dialogPromptInput.value = '';
+
+        DOM.dialogPrompt.classList.remove('hidden');
+        setTimeout(() => {
+            DOM.dialogPrompt.classList.remove('opacity-0');
+            DOM.dialogPrompt.querySelector('div').classList.remove('scale-95');
+            DOM.dialogPromptInput.focus();
+        }, 10);
+
+        const cleanup = () => {
+            DOM.dialogPrompt.classList.add('opacity-0');
+            DOM.dialogPrompt.querySelector('div').classList.add('scale-95');
+            setTimeout(() => DOM.dialogPrompt.classList.add('hidden'), 200);
+            DOM.btnDialogPromptCancel.removeEventListener('click', onCancel);
+            DOM.btnDialogPromptSubmit.removeEventListener('click', onSubmit);
+            DOM.dialogPromptInput.removeEventListener('keydown', onKeydown);
+        };
+
+        const onCancel = () => { cleanup(); resolve(null); };
+        const onSubmit = () => { cleanup(); resolve(DOM.dialogPromptInput.value.trim()); };
+        const onKeydown = (e) => { if (e.key === 'Enter') onSubmit(); };
+
+        DOM.btnDialogPromptCancel.addEventListener('click', onCancel);
+        DOM.btnDialogPromptSubmit.addEventListener('click', onSubmit);
+        DOM.dialogPromptInput.addEventListener('keydown', onKeydown);
+    });
 }
 
 // --- THEME MANAGEMENT ---
@@ -273,8 +353,8 @@ function renderCollections(cols) {
 }
 DOM.searchCol.addEventListener('input', fetchCollections);
 
-DOM.btnAddCol.addEventListener('click', () => {
-    const name = prompt('New Collection Name:');
+DOM.btnAddCol.addEventListener('click', async () => {
+    const name = await showPromptDialog('New Collection Name', 'e.g. users, products...');
     if (name) {
         currentCollection = name;
         DOM.colName.textContent = name;
@@ -287,7 +367,14 @@ DOM.btnAddCol.addEventListener('click', () => {
 // --- COLLECTION ACTIONS ---
 DOM.btnDeleteCol.addEventListener('click', async () => {
     if (!currentCollection) return;
-    if (!confirm(`Are you sure you want to DROP the entire collection '${currentCollection}'?\nThis cannot be undone.`)) return;
+    
+    const isConfirmed = await showConfirmDialog(
+        'Drop Collection', 
+        `Are you sure you want to DROP the entire collection '${currentCollection}'? This will permanently delete the JSON file.`, 
+        'Drop Collection', 
+        true
+    );
+    if (!isConfirmed) return;
     
     try {
         await apiFetch(`/api/${currentCollection}`, { method: 'DELETE' });
@@ -304,8 +391,17 @@ DOM.btnDeleteCol.addEventListener('click', async () => {
     }
 });
 
-DOM.btnExportCol.addEventListener('click', () => {
+DOM.btnExportCol.addEventListener('click', async () => {
     if (!currentCollection || currentDataList.length === 0) return;
+    
+    const isConfirmed = await showConfirmDialog(
+        'Export Data', 
+        `Download '${currentCollection}.json' containing ${currentDataList.length} documents?`, 
+        'Download', 
+        false
+    );
+    if (!isConfirmed) return;
+
     const dataStr = JSON.stringify(currentDataList, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -491,7 +587,14 @@ window.editData = (id) => {
 }
 
 window.deleteData = async (id) => {
-    if (!confirm(`Delete document ${id}?`)) return;
+    const isConfirmed = await showConfirmDialog(
+        'Delete Document', 
+        `Are you sure you want to delete document '${id}' from '${currentCollection}'?`, 
+        'Delete', 
+        true
+    );
+    if (!isConfirmed) return;
+
     try {
         await apiFetch(`/api/${currentCollection}/${id}`, { method: 'DELETE' });
         showToast('Document deleted');

@@ -14,7 +14,7 @@
 
     <!-- LOGIN OVERLAY -->
     <div id="login-overlay" class="absolute inset-0 bg-bg-primary z-50 flex items-center justify-center transition-colors duration-300">
-        <div class="bg-bg-secondary p-8 rounded-xl shadow-2xl border border-border-color w-96 flex flex-col items-center">
+        <div class="bg-bg-secondary p-8 rounded-xl shadow-2xl border border-border-color w-[90%] max-w-sm flex flex-col items-center">
             <h2 class="text-2xl font-bold text-text-primary mb-2 flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined text-[var(--accent)] text-3xl">database</span> GhostDB
             </h2>
@@ -80,27 +80,27 @@
                 <h2 id="current-col-name" class="font-semibold text-text-primary text-lg truncate">Select Collection</h2>
             </div>
             
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 sm:gap-3 flex-1 justify-end overflow-x-auto custom-scrollbar pb-1 sm:pb-0">
                 <!-- Action Buttons -->
-                <div id="data-toolbar" class="hidden flex items-center gap-3 mr-2">
+                <div id="data-toolbar" class="hidden flex items-center gap-2 sm:gap-3 mr-2 shrink-0">
                     <div class="relative">
-                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-text-secondary">search</span>
-                        <input type="text" id="search-data" placeholder="Search data..." class="pl-9 pr-4 py-1.5 bg-bg-secondary border border-border-color rounded-md text-sm text-text-primary focus:outline-none focus:border-[var(--accent)] transition-colors w-48 lg:w-64">
+                        <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[16px] text-text-secondary">search</span>
+                        <input type="text" id="search-data" placeholder="Search..." class="pl-8 pr-3 py-1.5 bg-bg-secondary border border-border-color rounded-md text-sm text-text-primary focus:outline-none focus:border-[var(--accent)] transition-colors w-28 sm:w-48 lg:w-64">
                     </div>
-                    <button id="btn-export-collection" class="px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary bg-bg-secondary border border-border-color hover:border-text-secondary rounded-md transition-all flex items-center gap-1 shadow-sm">
-                        <span class="material-symbols-outlined text-[16px]">download</span> Export
+                    <button id="btn-export-collection" class="px-2 sm:px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary bg-bg-secondary border border-border-color hover:border-text-secondary rounded-md transition-all flex items-center gap-1 shadow-sm" title="Export Collection">
+                        <span class="material-symbols-outlined text-[16px]">download</span> <span class="hidden sm:inline">Export</span>
                     </button>
-                    <button id="btn-delete-collection" class="px-3 py-1.5 text-sm font-medium text-red-500 bg-red-500/10 hover:bg-red-500/20 border border-transparent rounded-md transition-all flex items-center gap-1 shadow-sm">
-                        <span class="material-symbols-outlined text-[16px]">delete_forever</span> Drop
+                    <button id="btn-delete-collection" class="px-2 sm:px-3 py-1.5 text-sm font-medium text-red-500 bg-red-500/10 hover:bg-red-500/20 border border-transparent rounded-md transition-all flex items-center gap-1 shadow-sm" title="Drop Collection">
+                        <span class="material-symbols-outlined text-[16px]">delete_forever</span> <span class="hidden sm:inline">Drop</span>
                     </button>
-                    <button id="btn-add" class="px-4 py-1.5 text-sm font-medium text-white bg-[var(--accent)] hover:brightness-110 rounded-md transition-all flex items-center gap-1 shadow-sm">
-                        <span class="material-symbols-outlined text-[18px]">add</span> Insert
+                    <button id="btn-add" class="px-2 sm:px-4 py-1.5 text-sm font-medium text-white bg-[var(--accent)] hover:brightness-110 rounded-md transition-all flex items-center gap-1 shadow-sm" title="Insert Document">
+                        <span class="material-symbols-outlined text-[18px]">add</span> <span class="hidden sm:inline">Insert</span>
                     </button>
                 </div>
 
-                <div class="bg-bg-secondary p-1 rounded-lg border border-border-color flex">
-                    <button id="tab-table" class="px-3 py-1 text-sm rounded-md bg-text-primary text-bg-primary font-medium transition-colors" onclick="switchTab('table')">Table</button>
-                    <button id="tab-graph" class="px-3 py-1 text-sm rounded-md text-text-secondary hover:text-text-primary transition-colors" onclick="switchTab('graph')">Graph</button>
+                <div class="bg-bg-secondary p-1 rounded-lg border border-border-color flex shrink-0">
+                    <button id="tab-table" class="px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md bg-text-primary text-bg-primary font-medium transition-colors" onclick="switchTab('table')">Table</button>
+                    <button id="tab-graph" class="px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md text-text-secondary hover:text-text-primary transition-colors" onclick="switchTab('graph')">Graph</button>
                 </div>
             </div>
         </header>
@@ -132,7 +132,7 @@
                     </div>
                     
                     <!-- Pagination Controls -->
-                    <div id="pagination-controls" class="hidden border-t border-border-color p-3 bg-bg-tertiary flex justify-between items-center text-sm text-text-secondary">
+                    <div id="pagination-controls" class="hidden border-t border-border-color p-3 bg-bg-tertiary flex flex-col sm:flex-row justify-between items-center text-sm text-text-secondary gap-3">
                         <span id="page-info">Showing 1-50 of 0</span>
                         <div class="flex gap-2">
                             <button id="btn-prev-page" class="px-3 py-1 rounded border border-border-color hover:text-text-primary hover:border-text-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
@@ -209,8 +209,36 @@
         </div>
     </div>
 
+    <!-- CUSTOM CONFIRM DIALOG -->
+    <div id="dialog-confirm" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-bg-secondary w-[90%] max-w-sm rounded-xl shadow-2xl border border-border-color flex flex-col scale-95 transition-transform duration-200">
+            <div class="p-6">
+                <h3 id="dialog-confirm-title" class="text-lg font-bold text-text-primary mb-2">Confirmation</h3>
+                <p id="dialog-confirm-caption" class="text-sm text-text-secondary leading-relaxed mb-6">Are you sure you want to proceed?</p>
+                <div class="flex justify-end gap-3 mt-4">
+                    <button id="btn-dialog-confirm-cancel" class="px-4 py-2 text-sm font-medium text-text-secondary hover:bg-bg-tertiary rounded-md transition-colors border border-border-color">Cancel</button>
+                    <button id="btn-dialog-confirm-action" class="px-4 py-2 text-sm font-medium text-white rounded-md transition-all shadow-sm">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM PROMPT DIALOG -->
+    <div id="dialog-prompt" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-bg-secondary w-[90%] max-w-sm rounded-xl shadow-2xl border border-border-color flex flex-col scale-95 transition-transform duration-200">
+            <div class="p-6">
+                <h3 id="dialog-prompt-title" class="text-lg font-bold text-text-primary mb-4">Input Required</h3>
+                <input type="text" id="dialog-prompt-input" class="w-full p-2.5 bg-bg-primary border border-border-color rounded-md text-text-primary focus:outline-none focus:border-[var(--accent)] text-sm mb-6 shadow-sm">
+                <div class="flex justify-end gap-3 mt-2">
+                    <button id="btn-dialog-prompt-cancel" class="px-4 py-2 text-sm font-medium text-text-secondary hover:bg-bg-tertiary rounded-md transition-colors border border-border-color">Cancel</button>
+                    <button id="btn-dialog-prompt-submit" class="px-4 py-2 text-sm font-medium text-white bg-[var(--accent)] hover:brightness-110 rounded-md transition-all shadow-sm">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- TOAST CONTAINER -->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[120] flex flex-col gap-2 pointer-events-none"></div>
 
     <script src="script.js"></script>
 </body>

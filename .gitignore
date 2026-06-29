@@ -1,0 +1,4 @@
+node_modules/
+mydb/
+scratch/
+.env

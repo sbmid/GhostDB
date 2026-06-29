@@ -1,32 +1,53 @@
-/* Hide scrollbar for a cleaner look */
-::-webkit-scrollbar {
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --bg-primary: #f8fafc;
+        --bg-secondary: #ffffff;
+        --bg-tertiary: #f1f5f9;
+        --text-primary: #0f172a;
+        --text-secondary: #64748b;
+        --border-color: #e2e8f0;
+    }
+    
+    .dark {
+        --bg-primary: #020617;
+        --bg-secondary: #0f172a;
+        --bg-tertiary: #1e293b;
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+        --border-color: #334155;
+    }
+}
+
+@layer utilities {
+    .bg-bg-primary { background-color: var(--bg-primary); }
+    .bg-bg-secondary { background-color: var(--bg-secondary); }
+    .bg-bg-tertiary { background-color: var(--bg-tertiary); }
+    .text-text-primary { color: var(--text-primary); }
+    .text-text-secondary { color: var(--text-secondary); }
+    .border-border-color { border-color: var(--border-color); }
+    .divide-border-color > :not([hidden]) ~ :not([hidden]) { border-color: var(--border-color); }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
-::-webkit-scrollbar-track {
+.custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
 }
-::-webkit-scrollbar-thumb {
-    background: #3f3f46;
-    border-radius: 4px;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 10px;
 }
-::-webkit-scrollbar-thumb:hover {
-    background: #52525b;
-}
-
-/* Modal animations */
-.modal-active {
-    display: flex !important;
-    opacity: 1 !important;
-}
-.modal-active > div {
-    transform: scale(1) !important;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
 }
 
-/* Table row hover */
-tbody tr {
-    transition: background-color 0.15s ease;
-}
-tbody tr:hover {
-    background-color: rgba(255, 255, 255, 0.03);
+/* Base resets */
+input, textarea, button {
+    font-family: 'Outfit', sans-serif;
 }

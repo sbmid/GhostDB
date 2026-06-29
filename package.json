@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node test.js",
+    "start": "node server.js --api-only",
     "ui": "node server.js"
   },
   "keywords": [

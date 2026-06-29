@@ -132,6 +132,19 @@ app.delete('/api/:collection/:id', requireAuth, (req, res) => {
     res.json({ success: true });
 });
 
+app.delete('/api/:collection', requireAuth, (req, res) => {
+    const col = req.params.collection;
+    const filePath = path.join('./mydb', `${col}.json`);
+    try {
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to drop collection' });
+    }
+});
+
 // --- UI Serving ---
 if (!isApiOnly) {
     app.use(express.static('public'));

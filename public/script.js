@@ -1,5 +1,5 @@
 const DOM = {
-    // Auth & Overlay
+    // Auth
     loginOverlay: document.getElementById('login-overlay'),
     loginPassword: document.getElementById('login-password'),
     btnLogin: document.getElementById('btn-login'),
@@ -24,6 +24,8 @@ const DOM = {
     // Search Data
     dataToolbar: document.getElementById('data-toolbar'),
     searchData: document.getElementById('search-data'),
+    btnExportCol: document.getElementById('btn-export-collection'),
+    btnDeleteCol: document.getElementById('btn-delete-collection'),
     
     // Tabs
     tabTable: document.getElementById('tab-table'),
@@ -33,32 +35,61 @@ const DOM = {
     graphContainer: document.getElementById('graph-container'),
     btnCenterGraph: document.getElementById('btn-center-graph'),
     
-    // Modals
-    modal: document.getElementById('modal'),
+    // Drawer
+    drawer: document.getElementById('drawer'),
+    drawerOverlay: document.getElementById('drawer-overlay'),
     inputId: document.getElementById('input-id'),
     inputJson: document.getElementById('input-json'),
     btnSave: document.getElementById('btn-save'),
     btnCancel: document.getElementById('btn-cancel'),
-    btnCloseModal: document.getElementById('btn-close-modal'),
+    btnCloseDrawer: document.getElementById('btn-close-drawer'),
+    jsonError: document.getElementById('json-error'),
 
     // Settings
     btnSettings: document.getElementById('btn-settings'),
     modalSettings: document.getElementById('modal-settings'),
+    modalSettingsContent: document.getElementById('modal-settings-content'),
     btnCloseSettings: document.getElementById('btn-close-settings'),
     inputOldPass: document.getElementById('input-old-pass'),
     inputNewPass: document.getElementById('input-new-pass'),
     btnSavePass: document.getElementById('btn-save-password'),
     settingsMsg: document.getElementById('settings-msg'),
 
-    // Theme
+    // Theme & Toast
     btnTheme: document.getElementById('btn-toggle-theme'),
-    themeIcon: document.getElementById('theme-icon')
+    themeIcon: document.getElementById('theme-icon'),
+    toastContainer: document.getElementById('toast-container'),
+
+    // Pagination
+    paginationControls: document.getElementById('pagination-controls'),
+    pageInfo: document.getElementById('page-info'),
+    btnPrevPage: document.getElementById('btn-prev-page'),
+    btnNextPage: document.getElementById('btn-next-page')
 };
 
 let currentCollection = null;
 let currentTab = 'table';
 let myGraph = null;
 let currentDataList = [];
+let currentPage = 1;
+const ITEMS_PER_PAGE = 50;
+
+// --- TOAST NOTIFICATIONS ---
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast-enter p-3 rounded-md shadow-lg text-sm text-white flex items-center gap-2 ${
+        type === 'success' ? 'bg-[var(--accent)]' : 'bg-red-500'
+    }`;
+    const icon = type === 'success' ? 'check_circle' : 'error';
+    toast.innerHTML = `<span class="material-symbols-outlined text-[18px]">${icon}</span> ${message}`;
+    
+    DOM.toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.replace('toast-enter', 'toast-exit');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
 
 // --- THEME MANAGEMENT ---
 function initTheme() {
@@ -89,7 +120,6 @@ async function apiFetch(url, options = {}) {
     
     const res = await fetch(url, options);
     if (res.status === 401) {
-        // Token expired/invalid
         localStorage.removeItem('ghost_token');
         showLogin();
         throw new Error('Unauthorized');
@@ -121,8 +151,9 @@ DOM.btnLogin.addEventListener('click', async () => {
             localStorage.setItem('ghost_token', data.token);
             hideLogin();
             initApp();
+            showToast('Welcome to GhostDB Studio');
         } else {
-            DOM.loginError.textContent = data.error || 'Login gagal';
+            DOM.loginError.textContent = data.error || 'Login failed';
             DOM.loginError.classList.remove('hidden');
         }
     } catch (e) {
@@ -139,14 +170,18 @@ DOM.btnLogout.addEventListener('click', () => {
 // --- SETTINGS (CHANGE PASSWORD) ---
 DOM.btnSettings.addEventListener('click', () => {
     DOM.modalSettings.classList.remove('hidden');
-    setTimeout(() => DOM.modalSettings.querySelector('div').classList.remove('scale-95'), 10);
+    setTimeout(() => {
+        DOM.modalSettings.classList.remove('opacity-0');
+        DOM.modalSettingsContent.classList.remove('scale-95');
+    }, 10);
     DOM.inputOldPass.value = '';
     DOM.inputNewPass.value = '';
     DOM.settingsMsg.classList.add('hidden');
 });
 
 function closeSettings() {
-    DOM.modalSettings.querySelector('div').classList.add('scale-95');
+    DOM.modalSettings.classList.add('opacity-0');
+    DOM.modalSettingsContent.classList.add('scale-95');
     setTimeout(() => DOM.modalSettings.classList.add('hidden'), 200);
 }
 DOM.btnCloseSettings.addEventListener('click', closeSettings);
@@ -163,10 +198,11 @@ DOM.btnSavePass.addEventListener('click', async () => {
         const data = await res.json();
         DOM.settingsMsg.classList.remove('hidden');
         if (data.success) {
-            DOM.settingsMsg.textContent = 'Password berhasil diganti!';
-            DOM.settingsMsg.className = 'text-sm text-green-500 mt-2';
+            DOM.settingsMsg.textContent = 'Password updated!';
+            DOM.settingsMsg.className = 'text-sm text-[var(--accent)] mt-2';
             localStorage.setItem('ghost_token', data.token);
-            setTimeout(closeSettings, 1500);
+            setTimeout(closeSettings, 1000);
+            showToast('Password changed successfully');
         } else {
             DOM.settingsMsg.textContent = data.error;
             DOM.settingsMsg.className = 'text-sm text-red-500 mt-2';
@@ -175,7 +211,6 @@ DOM.btnSavePass.addEventListener('click', async () => {
         console.error(e);
     }
 });
-
 
 // --- MOBILE SIDEBAR ---
 DOM.btnMenu.addEventListener('click', () => {
@@ -189,17 +224,17 @@ DOM.btnCloseSidebar.addEventListener('click', () => {
 function switchTab(tab) {
     currentTab = tab;
     if (tab === 'table') {
-        DOM.tabTable.className = "px-3 py-1 text-sm rounded-md bg-text-primary text-bg-primary font-medium transition-colors";
+        DOM.tabTable.className = "px-3 py-1 text-sm rounded-md bg-text-primary text-bg-primary font-medium transition-colors shadow-sm";
         DOM.tabGraph.className = "px-3 py-1 text-sm rounded-md text-text-secondary hover:text-text-primary transition-colors";
         DOM.viewTable.classList.remove('hidden');
         DOM.viewGraph.classList.add('hidden');
-        if (currentCollection) DOM.btnAdd.classList.remove('hidden');
+        if (currentCollection) DOM.dataToolbar.classList.remove('hidden');
     } else {
-        DOM.tabGraph.className = "px-3 py-1 text-sm rounded-md bg-text-primary text-bg-primary font-medium transition-colors";
+        DOM.tabGraph.className = "px-3 py-1 text-sm rounded-md bg-text-primary text-bg-primary font-medium transition-colors shadow-sm";
         DOM.tabTable.className = "px-3 py-1 text-sm rounded-md text-text-secondary hover:text-text-primary transition-colors";
         DOM.viewTable.classList.add('hidden');
         DOM.viewGraph.classList.remove('hidden');
-        DOM.btnAdd.classList.add('hidden');
+        DOM.dataToolbar.classList.add('hidden');
         loadGraph();
     }
 }
@@ -223,17 +258,15 @@ function renderCollections(cols) {
         if (filterText && !col.toLowerCase().includes(filterText)) return;
 
         const btn = document.createElement('button');
-        btn.className = `w-full text-left px-3 py-2 rounded-lg text-sm mb-1 transition-colors flex items-center gap-2 ${col === currentCollection ? 'bg-bg-tertiary text-text-primary font-medium border border-border-color' : 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary'}`;
-        btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">folder</span> ${col}`;
+        btn.className = `w-full text-left px-3 py-2 rounded-lg text-sm mb-1 transition-colors flex items-center gap-2 ${col === currentCollection ? 'bg-bg-tertiary text-text-primary font-medium border border-border-color shadow-sm' : 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary'}`;
+        btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">folder_data</span> ${col}`;
         btn.onclick = () => {
             currentCollection = col;
             DOM.colName.textContent = col;
-            DOM.btnAdd.classList.remove('hidden');
-            DOM.dataToolbar.classList.remove('hidden');
-            // Hide sidebar on mobile after click
-            if(window.innerWidth < 768) DOM.sidebar.classList.add('-translate-x-full');
+            if (currentTab === 'table') DOM.dataToolbar.classList.remove('hidden');
+            if (window.innerWidth < 768) DOM.sidebar.classList.add('-translate-x-full');
             loadData();
-            fetchCollections(); // re-render buat update state active
+            fetchCollections();
         };
         DOM.colList.appendChild(btn);
     });
@@ -241,21 +274,59 @@ function renderCollections(cols) {
 DOM.searchCol.addEventListener('input', fetchCollections);
 
 DOM.btnAddCol.addEventListener('click', () => {
-    const name = prompt('Nama Collection Baru:');
+    const name = prompt('New Collection Name:');
     if (name) {
         currentCollection = name;
         DOM.colName.textContent = name;
-        DOM.btnAdd.classList.remove('hidden');
-        DOM.dataToolbar.classList.remove('hidden');
+        if (currentTab === 'table') DOM.dataToolbar.classList.remove('hidden');
         loadData();
+        showToast('Empty collection initialized');
     }
 });
 
+// --- COLLECTION ACTIONS ---
+DOM.btnDeleteCol.addEventListener('click', async () => {
+    if (!currentCollection) return;
+    if (!confirm(`Are you sure you want to DROP the entire collection '${currentCollection}'?\nThis cannot be undone.`)) return;
+    
+    try {
+        await apiFetch(`/api/${currentCollection}`, { method: 'DELETE' });
+        showToast(`Collection ${currentCollection} dropped`);
+        currentCollection = null;
+        DOM.colName.textContent = 'Select Collection';
+        DOM.dataToolbar.classList.add('hidden');
+        DOM.tableBody.innerHTML = '';
+        DOM.emptyState.classList.remove('hidden');
+        DOM.paginationControls.classList.add('hidden');
+        fetchCollections();
+    } catch (e) {
+        showToast('Failed to drop collection', 'error');
+    }
+});
+
+DOM.btnExportCol.addEventListener('click', () => {
+    if (!currentCollection || currentDataList.length === 0) return;
+    const dataStr = JSON.stringify(currentDataList, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentCollection}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${currentCollection}.json`);
+});
+
+// --- DATA LIST & PAGINATION ---
 async function loadData() {
     if (!currentCollection) return;
     try {
         const res = await apiFetch(`/api/${currentCollection}`);
         currentDataList = await res.json();
+        currentPage = 1;
         renderDataList();
     } catch (e) {
         console.error(e);
@@ -274,64 +345,114 @@ function renderDataList() {
             JSON.stringify(item).toLowerCase().includes(filterText)
         );
     }
-
+    
     if (filteredList.length === 0) {
         DOM.tableHead.parentElement.classList.add('hidden');
         DOM.emptyState.classList.remove('hidden');
+        DOM.paginationControls.classList.add('hidden');
         return;
     }
     
     DOM.tableHead.parentElement.classList.remove('hidden');
     DOM.emptyState.classList.add('hidden');
+    DOM.paginationControls.classList.remove('hidden');
     
-    // Reverse supaya data terbaru di atas (asumsi ID time-based, atau minimal insert order dibalik)
-    filteredList.slice().reverse().forEach(item => {
+    const totalItems = filteredList.length;
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    
+    // Reverse for latest first
+    filteredList = filteredList.slice().reverse();
+    
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
+    const pageData = filteredList.slice(startIndex, endIndex);
+
+    DOM.pageInfo.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalItems}`;
+    DOM.btnPrevPage.disabled = currentPage === 1;
+    DOM.btnNextPage.disabled = currentPage === totalPages;
+    
+    pageData.forEach(item => {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-bg-tertiary transition-colors group";
         
-        let jsonPreview = JSON.stringify(item);
-        if (jsonPreview.length > 80) jsonPreview = jsonPreview.substring(0, 80) + '...';
+        // Pretty JSON for table view
+        let formattedJson = JSON.stringify(item, null, 2);
+        // Truncate if too long for preview
+        if (formattedJson.length > 200) {
+            formattedJson = formattedJson.substring(0, 200) + '...';
+        }
 
         tr.innerHTML = `
-            <td class="px-6 py-4 font-mono text-xs font-semibold whitespace-nowrap text-text-primary">${item.id}</td>
-            <td class="px-6 py-4 font-mono text-xs text-text-secondary truncate max-w-[200px] sm:max-w-md">${jsonPreview}</td>
-            <td class="px-6 py-4 text-right">
-                <button class="text-text-secondary hover:text-text-primary mr-3 opacity-0 group-hover:opacity-100 transition-opacity" onclick="editData('${item.id}')" title="Edit">
-                    <span class="material-symbols-outlined text-[18px]">edit</span>
-                </button>
-                <button class="text-red-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity" onclick="deleteData('${item.id}')" title="Delete">
-                    <span class="material-symbols-outlined text-[18px]">delete</span>
-                </button>
+            <td class="px-6 py-4 font-mono text-xs font-semibold text-text-primary align-top w-48">${item.id}</td>
+            <td class="px-6 py-4 font-mono text-xs text-text-secondary align-top">
+                <pre class="bg-bg-primary p-2 rounded border border-border-color overflow-x-auto text-[11px] leading-relaxed">${formattedJson}</pre>
+            </td>
+            <td class="px-6 py-4 align-top">
+                <div class="flex items-center justify-end gap-2">
+                    <button class="p-1.5 rounded-md text-text-secondary hover:bg-bg-tertiary hover:text-text-primary transition-colors border border-transparent hover:border-border-color shadow-sm" onclick="editData('${item.id}')" title="Edit">
+                        <span class="material-symbols-outlined text-[16px]">edit</span>
+                    </button>
+                    <button class="p-1.5 rounded-md text-text-secondary hover:bg-red-500/10 hover:text-red-500 transition-colors border border-transparent hover:border-red-500/20 shadow-sm" onclick="deleteData('${item.id}')" title="Delete">
+                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                </div>
             </td>
         `;
         DOM.tableBody.appendChild(tr);
     });
 }
-DOM.searchData.addEventListener('input', renderDataList);
 
-// --- MODAL & CRUD ---
-function openModal(id = '', jsonData = '') {
-    DOM.modal.classList.remove('hidden');
+DOM.searchData.addEventListener('input', () => {
+    currentPage = 1;
+    renderDataList();
+});
+DOM.btnPrevPage.addEventListener('click', () => {
+    if (currentPage > 1) { currentPage--; renderDataList(); }
+});
+DOM.btnNextPage.addEventListener('click', () => {
+    currentPage++; renderDataList();
+});
+
+// --- DRAWER & CRUD ---
+function openDrawer(id = '', jsonData = '') {
+    DOM.drawerOverlay.classList.remove('hidden');
+    DOM.drawer.classList.remove('translate-x-full');
     setTimeout(() => {
-        DOM.modal.classList.remove('opacity-0');
-        DOM.modal.querySelector('div').classList.remove('scale-95');
+        DOM.drawerOverlay.classList.remove('opacity-0');
     }, 10);
+    
     DOM.inputId.value = id;
     DOM.inputJson.value = jsonData;
-    DOM.inputId.disabled = !!id; // Lock ID kalo edit
+    DOM.inputId.disabled = !!id; 
+    DOM.jsonError.classList.add('hidden');
 }
 
-function closeModal() {
-    DOM.modal.classList.add('opacity-0');
-    DOM.modal.querySelector('div').classList.add('scale-95');
-    setTimeout(() => DOM.modal.classList.add('hidden'), 200);
+function closeDrawer() {
+    DOM.drawerOverlay.classList.add('opacity-0');
+    DOM.drawer.classList.add('translate-x-full');
+    setTimeout(() => {
+        DOM.drawerOverlay.classList.add('hidden');
+    }, 300);
 }
 
 DOM.btnAdd.addEventListener('click', () => {
-    openModal('', '{\n  \n}');
+    openDrawer('', '{\n  \n}');
 });
-DOM.btnCancel.addEventListener('click', closeModal);
-DOM.btnCloseModal.addEventListener('click', closeModal);
+DOM.btnCancel.addEventListener('click', closeDrawer);
+DOM.btnCloseDrawer.addEventListener('click', closeDrawer);
+DOM.drawerOverlay.addEventListener('click', closeDrawer);
+
+// Realtime JSON validation
+DOM.inputJson.addEventListener('input', () => {
+    try {
+        JSON.parse(DOM.inputJson.value);
+        DOM.jsonError.classList.add('hidden');
+        DOM.inputJson.classList.remove('border-red-500');
+    } catch(e) {
+        DOM.jsonError.classList.remove('hidden');
+        DOM.inputJson.classList.add('border-red-500');
+    }
+});
 
 DOM.btnSave.addEventListener('click', async () => {
     const id = DOM.inputId.value.trim();
@@ -339,11 +460,14 @@ DOM.btnSave.addEventListener('click', async () => {
     try {
         data = JSON.parse(DOM.inputJson.value);
     } catch(e) {
-        alert('Invalid JSON!');
+        showToast('Invalid JSON Payload', 'error');
         return;
     }
     
-    if (!id) return alert('ID required!');
+    if (!id) {
+        showToast('Document ID is required', 'error');
+        return;
+    }
     data.id = id;
     
     try {
@@ -352,27 +476,28 @@ DOM.btnSave.addEventListener('click', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        closeModal();
+        closeDrawer();
+        showToast('Document saved');
         loadData();
     } catch (e) {
-        console.error(e);
-        alert('Gagal nyimpen!');
+        showToast('Failed to save document', 'error');
     }
 });
 
 window.editData = (id) => {
     const item = currentDataList.find(i => i.id === id);
     if (!item) return;
-    openModal(id, JSON.stringify(item, null, 2));
+    openDrawer(id, JSON.stringify(item, null, 2));
 }
 
 window.deleteData = async (id) => {
-    if (!confirm(`Yakin hapus ID: ${id}?`)) return;
+    if (!confirm(`Delete document ${id}?`)) return;
     try {
         await apiFetch(`/api/${currentCollection}/${id}`, { method: 'DELETE' });
+        showToast('Document deleted');
         loadData();
     } catch (e) {
-        console.error(e);
+        showToast('Failed to delete', 'error');
     }
 }
 
@@ -390,15 +515,15 @@ async function loadGraph() {
                 .nodeId('id')
                 .nodeVal('val')
                 .nodeLabel(node => {
-                    if (node.group === 'ROOT') return `<div class="bg-bg-secondary text-text-primary p-2 rounded-md border border-purple-500 text-lg font-bold shadow-[0_0_15px_rgba(168,85,247,0.5)]">🌌 SEMESTA: ${node.name}</div>`;
-                    if (node.group === 0) return `<div class="bg-bg-tertiary text-text-primary p-2 rounded-md border border-border-color text-sm font-semibold">📁 Collection: ${node.name}</div>`;
-                    return `<div class="bg-bg-tertiary text-text-secondary p-2 rounded-md border border-border-color text-xs font-mono"><span class="text-text-primary font-semibold">📄 ID: ${node.name}</span><br/>Size: ${node.val * 50} chars</div>`;
+                    if (node.group === 'ROOT') return `<div class="bg-bg-secondary text-text-primary p-2 rounded-md border border-[var(--accent)] text-lg font-bold shadow-[0_0_15px_rgba(36,180,126,0.3)]">🌌 ROOT: ${node.name}</div>`;
+                    if (node.group === 0) return `<div class="bg-bg-tertiary text-text-primary p-2 rounded-md border border-border-color text-sm font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">folder_data</span> ${node.name}</div>`;
+                    return `<div class="bg-bg-tertiary text-text-secondary p-2 rounded-md border border-border-color text-xs font-mono"><span class="text-text-primary font-semibold">📄 ${node.name}</span><br/>Size: ${node.val * 50} chars</div>`;
                 })
                 .nodeColor(node => {
-                    if (node.group === 'ROOT') return '#a855f7'; 
-                    if (node.group === 0) return '#94a3b8'; // Base folder color
+                    if (node.group === 'ROOT') return '#24b47e'; // Accent
+                    if (node.group === 0) return '#6b7280'; // Folder
                     if (!colors[node.group]) {
-                        colors[node.group] = `hsl(${Math.random() * 360}, 70%, 60%)`;
+                        colors[node.group] = `hsl(${Math.random() * 360}, 60%, 50%)`;
                     }
                     return colors[node.group];
                 })
@@ -414,7 +539,7 @@ async function loadGraph() {
                         DOM.dataToolbar.classList.remove('hidden');
                         switchTab('table');
                         loadData();
-                        setTimeout(() => editData(node.name), 300); // Open edit modal
+                        setTimeout(() => editData(node.name), 300);
                     }
                 });
                 
@@ -427,7 +552,7 @@ async function loadGraph() {
         
         myGraph.graphData(gData);
     } catch (e) {
-        console.error('Gagal load graph', e);
+        console.error('Graph error', e);
     }
 }
 

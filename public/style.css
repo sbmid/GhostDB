@@ -4,21 +4,23 @@
 
 @layer base {
     :root {
-        --bg-primary: #f8fafc;
+        --bg-primary: #f8f9fa;
         --bg-secondary: #ffffff;
-        --bg-tertiary: #f1f5f9;
-        --text-primary: #0f172a;
-        --text-secondary: #64748b;
-        --border-color: #e2e8f0;
+        --bg-tertiary: #f1f3f5;
+        --text-primary: #111827;
+        --text-secondary: #6b7280;
+        --border-color: #e5e7eb;
+        --accent: #24b47e;
     }
     
     .dark {
-        --bg-primary: #020617;
-        --bg-secondary: #0f172a;
-        --bg-tertiary: #1e293b;
-        --text-primary: #f8fafc;
-        --text-secondary: #94a3b8;
-        --border-color: #334155;
+        --bg-primary: #1c1c1c;
+        --bg-secondary: #232323;
+        --bg-tertiary: #2e2e2e;
+        --text-primary: #ededed;
+        --text-secondary: #a0a0a0;
+        --border-color: #3e3e3e;
+        --accent: #24b47e;
     }
 }
 
@@ -45,6 +47,22 @@
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: var(--text-secondary);
+}
+
+/* Toast Animations */
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+.toast-enter {
+    animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.toast-exit {
+    animation: fadeOut 0.3s ease forwards;
 }
 
 /* Base resets */

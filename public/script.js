@@ -20,6 +20,9 @@ const DOM = {
     tableHead: document.getElementById('table-head'),
     tableBody: document.getElementById('table-body'),
     emptyState: document.getElementById('empty-state'),
+    statCols: document.getElementById('stat-cols'),
+    statDocs: document.getElementById('stat-docs'),
+    statSize: document.getElementById('stat-size'),
     
     // Search Data
     dataToolbar: document.getElementById('data-toolbar'),
@@ -325,8 +328,41 @@ async function fetchCollections() {
         const res = await apiFetch('/api/collections');
         const cols = await res.json();
         renderCollections(cols);
+        updateDashboardStats(cols.length);
     } catch (e) {
         console.error(e);
+    }
+}
+
+async function updateDashboardStats(colCount) {
+    if (DOM.statCols) DOM.statCols.textContent = colCount;
+    try {
+        const res = await apiFetch('/api/graph-data');
+        const data = await res.json();
+        
+        // Count documents (nodes with group !== 0 and !== 'ROOT')
+        let docCount = 0;
+        let totalSize = 0;
+        
+        if (data.nodes) {
+            data.nodes.forEach(n => {
+                if (n.group !== 0 && n.group !== 'ROOT') {
+                    docCount++;
+                    // Node val represents estimated size (val = chars / 50)
+                    totalSize += (n.val * 50);
+                }
+            });
+        }
+        
+        if (DOM.statDocs) DOM.statDocs.textContent = docCount.toLocaleString();
+        
+        let sizeStr = totalSize + " B";
+        if (totalSize > 1024) sizeStr = (totalSize / 1024).toFixed(2) + " KB";
+        if (totalSize > 1024 * 1024) sizeStr = (totalSize / (1024 * 1024)).toFixed(2) + " MB";
+        
+        if (DOM.statSize) DOM.statSize.textContent = sizeStr;
+    } catch(e) {
+        console.error('Stats error', e);
     }
 }
 

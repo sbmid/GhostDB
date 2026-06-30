@@ -12,11 +12,16 @@ function loadConfig() {
         config = {
             port: 9969,
             password: '12345678',
-            token: crypto.randomBytes(32).toString('hex')
+            token: crypto.randomBytes(32).toString('hex'),
+            encryptionKey: crypto.randomBytes(32).toString('hex')
         };
         fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
     } else {
         config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        if (!config.encryptionKey) {
+            config.encryptionKey = crypto.randomBytes(32).toString('hex');
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+        }
     }
 }
 loadConfig();
@@ -29,7 +34,7 @@ const isApiOnly = process.argv.includes('--api-only');
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
-const db = new GhostDB('./mydb');
+const db = new GhostDB('./mydb', config.encryptionKey);
 
 // --- Auth Middleware ---
 function requireAuth(req, res, next) {
@@ -149,7 +154,7 @@ app.delete('/api/:collection', requireAuth, (req, res) => {
 if (!isApiOnly) {
     app.use(express.static('public'));
 } else {
-    app.get('*', (req, res) => {
+    app.use((req, res) => {
         res.status(404).json({ error: 'UI is disabled. API Only mode active.' });
     });
 }
